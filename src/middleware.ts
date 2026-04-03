@@ -6,7 +6,17 @@ export function middleware(request: NextRequest) {
 
   // Public routes that don't require authentication
   const publicRoutes = ['/', '/login', '/register', '/pending-approval']
-  
+
+  // For protected routes, check for session token
+  const sessionToken = request.cookies.get('next-auth.session-token')?.value ||
+    request.cookies.get('__Secure-next-auth.session-token')?.value
+
+  // If user is authenticated and tries to access login/register, redirect to dashboard
+  if (sessionToken && (pathname === '/login' || pathname === '/register')) {
+    const dashboardUrl = new URL('/dashboard', request.url)
+    return NextResponse.redirect(dashboardUrl)
+  }
+
   // Check if route is public
   if (publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))) {
     return NextResponse.next()
@@ -22,13 +32,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // For protected routes, check for session token
-  const sessionToken = request.cookies.get('next-auth.session-token')?.value ||
-    request.cookies.get('__Secure-next-auth.session-token')?.value
-
   // If no session token, redirect to login
   if (!sessionToken) {
     const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('callbackUrl', pathname)
     return NextResponse.redirect(loginUrl)
   }
 

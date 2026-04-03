@@ -38,9 +38,13 @@ export default function LoginPage() {
         setError(result.error === 'CredentialsSignin' 
           ? 'Email atau password salah' 
           : result.error)
-      } else {
+      } else if (result?.ok) {
+        // Small delay to ensure session is established
+        await new Promise(resolve => setTimeout(resolve, 500))
         router.push(callbackUrl)
         router.refresh()
+      } else {
+        setError('Login gagal. Silakan coba lagi.')
       }
     } catch (err) {
       setError('Terjadi kesalahan. Silakan coba lagi.')
