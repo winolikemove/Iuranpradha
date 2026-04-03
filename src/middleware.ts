@@ -8,12 +8,17 @@ export function middleware(request: NextRequest) {
   const publicRoutes = ['/', '/login', '/register', '/pending-approval']
   
   // Check if route is public
-  if (publicRoutes.includes(pathname)) {
+  if (publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))) {
     return NextResponse.next()
   }
 
   // API routes handle their own authentication
   if (pathname.startsWith('/api/')) {
+    return NextResponse.next()
+  }
+
+  // Static files
+  if (pathname.startsWith('/_next') || pathname.includes('.')) {
     return NextResponse.next()
   }
 
@@ -24,7 +29,6 @@ export function middleware(request: NextRequest) {
   // If no session token, redirect to login
   if (!sessionToken) {
     const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('callbackUrl', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
@@ -33,6 +37,13 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|public|images).*)',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|public|images|logo).*)',
   ],
 }
