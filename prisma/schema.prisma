@@ -1,0 +1,306 @@
+// This is your Prisma schema file for IWK-RT11 Digital Ecosystem
+// Multi-tenant RT management system with block-based data isolation
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum Role {
+  SUPERADMIN
+  ADMINBLOK
+  BENDAHARA
+  KETUART
+  WARGA
+}
+
+enum UserStatus {
+  PENDINGAPPROVAL
+  ACTIVE
+  REJECTED
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum Blok {
+  A
+  B
+}
+
+// ==================== SYSTEM ====================
+
+model SystemConfig {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  label     String
+  type      String   @default("text") // text, number, textarea, url
+  group     String   @default("general") // general, contact, finance
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([group])
+  @@index([key])
+}
+
+model InitialBalance {
+  id        String   @id @default(uuid())
+  blok      Blok
+  year      Int
+  amount    Float
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([blok, year])
+  @@index([blok])
+  @@index([year])
+}
+
+// ==================== USER & PROFILE ====================
+
+model Profile {
+  id           String       @id @default(uuid())
+  userId       String       @unique // NextAuth user ID
+  namaLengkap  String
+  nik          String       @unique
+  email        String       @unique
+  noTelepon    String
+  blok         Blok
+  nomorRumah   String
+  role         Role         @default(WARGA)
+  status       UserStatus   @default(PENDINGAPPROVAL)
+  jabatan      String       @default("Warga")
+  isSignatory  Boolean      @default(false)
+  signatureUrl String?
+  fotoProfil   String?
+  rejectedAt   DateTime?
+  rejectReason String?
+  approvedAt   DateTime?
+  approvedBy   String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relations
+  paymentSubmissions PaymentSubmission[]
+  transactions       Transaction[]       @relation("CreatedByProfile")
+  activities         Activity[]          @relation("AuthorProfile")
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([blok])
+  @@index([role])
+  @@index([status])
+  @@index([blok, status])
+  @@index([blok, role])
+}
+
+// NextAuth User model
+model User {
+  id            String     @id @default(cuid())
+  email         String     @unique
+  emailVerified DateTime?
+  password      String?
+  name          String?
+  image         String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  profile       Profile?
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ==================== ACTIVITY / KEGIATAN ====================
+
+model Activity {
+  id        String    @id @default(uuid())
+  blok      Blok?     // null means GENERAL (visible to all)
+  title     String
+  content   String
+  imageUrl  String?
+  authorId  String
+  author    Profile   @relation("AuthorProfile", fields: [authorId], references: [id])
+  isPinned  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([blok])
+  @@index([createdAt])
+  @@index([isPinned])
+}
+
+// ==================== FINANCE ====================
+
+model FinancialCategory {
+  id           String          @id @default(uuid())
+  blok         Blok
+  name         String
+  type         TransactionType
+  description  String?
+  isActive     Boolean         @default(true)
+  transactions Transaction[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@unique([blok, name, type])
+  @@index([blok])
+  @@index([blok, type])
+  @@index([isActive])
+}
+
+model BankAccount {
+  id               String            @id @default(uuid())
+  blok             Blok
+  bankName         String
+  accountNumber    String
+  accountHolder    String
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  paymentSubmissions PaymentSubmission[]
+
+  @@index([blok])
+  @@index([isActive])
+}
+
+model Transaction {
+  id                  String            @id @default(uuid())
+  blok                Blok
+  type                TransactionType
+  categoryId          String
+  category            FinancialCategory @relation(fields: [categoryId], references: [id])
+  amount              Float
+  description         String
+  evidenceUrl         String?
+  transactionDate     DateTime          @default(now())
+  createdById         String
+  createdBy           Profile           @relation("CreatedByProfile", fields: [createdById], references: [id])
+  paymentSubmissionId String?
+  journalEntries      JournalEntry[]
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([blok])
+  @@index([categoryId])
+  @@index([transactionDate])
+  @@index([blok, type])
+  @@index([blok, transactionDate])
+}
+
+model JournalEntry {
+  id            String      @id @default(uuid())
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  accountName   String
+  debit         Float       @default(0)
+  credit        Float       @default(0)
+  createdAt     DateTime    @default(now())
+
+  @@index([transactionId])
+}
+
+// ==================== PAYMENT (Multi-month support) ====================
+
+model PaymentSubmission {
+  id              String        @id @default(uuid())
+  profileId       String
+  profile         Profile       @relation(fields: [profileId], references: [id])
+  blok            Blok
+  totalAmount     Float
+  status          PaymentStatus @default(PENDING)
+  evidenceUrl     String
+  bankAccountId   String
+  bankAccount     BankAccount   @relation(fields: [bankAccountId], references: [id])
+  processedAt     DateTime?
+  processedById   String?
+  rejectReason    String?
+  items           PaymentItem[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([profileId])
+  @@index([blok])
+  @@index([status])
+  @@index([createdAt])
+  @@index([blok, status])
+}
+
+model PaymentItem {
+  id           String            @id @default(uuid())
+  submissionId String
+  submission   PaymentSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  periodMonth  Int // 1-12
+  periodYear   Int
+  amount       Float
+
+  @@unique([submissionId, periodMonth, periodYear])
+  @@index([periodYear, periodMonth])
+}
+
+// ==================== AUDIT LOG ====================
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String
+  action     String
+  entityType String
+  entityId   String
+  oldData    String?
+  newData    String?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
