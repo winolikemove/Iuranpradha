@@ -30,7 +30,7 @@ interface SidebarProps {
     blok: string
     role: string
     jabatan: string
-  } | null
+  }
   onLogout: () => void
 }
 
@@ -51,7 +51,7 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
 
   const filteredNavItems = navItems.filter(item => {
     if (!item.roles) return true
-    return user && item.roles.includes(user.role)
+    return item.roles.includes(user.role)
   })
 
   return (
@@ -104,49 +104,47 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
       </ScrollArea>
 
       {/* User Profile */}
-      {user && (
-        <div className="border-t p-4">
-          {!collapsed ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
-                  {user.namaLengkap.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{user.namaLengkap}</p>
-                  <p className="text-xs text-muted-foreground truncate">{user.jabatan}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <RoleBadge role={user.role as any} />
-                <BlockBadge blok={user.blok as any} />
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={onLogout}
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Keluar
-              </Button>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-2">
+      <div className="border-t p-4">
+        {!collapsed ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
                 {user.namaLengkap.charAt(0).toUpperCase()}
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onLogout}
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{user.namaLengkap}</p>
+                <p className="text-xs text-muted-foreground truncate">{user.jabatan}</p>
+              </div>
             </div>
-          )}
-        </div>
-      )}
+            <div className="flex items-center gap-2">
+              <RoleBadge role={user.role as any} />
+              <BlockBadge blok={user.blok as any} />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={onLogout}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Keluar
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
+              {user.namaLengkap.charAt(0).toUpperCase()}
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onLogout}
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
     </aside>
   )
 }

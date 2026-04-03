@@ -16,7 +16,7 @@ interface AppShellProps {
     blok: string
     role: string
     jabatan: string
-  } | null
+  }
 }
 
 export function AppShell({ children, title, user }: AppShellProps) {

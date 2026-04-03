@@ -11,7 +11,7 @@ export default async function DashboardLayout({
 }) {
   const session = await getServerSession(authOptions)
 
-  if (!session?.user) {
+  if (!session?.user?.id) {
     redirect('/login')
   }
 
@@ -33,23 +33,28 @@ export default async function DashboardLayout({
     },
   })
 
+  // If no profile exists, redirect to register
+  if (!profile) {
+    redirect('/register')
+  }
+
   // Check if user is pending or rejected
-  if (profile?.status === 'PENDINGAPPROVAL') {
+  if (profile.status === 'PENDINGAPPROVAL') {
     redirect('/pending-approval')
   }
 
-  if (profile?.status === 'REJECTED') {
+  if (profile.status === 'REJECTED') {
     redirect('/pending-approval?status=rejected')
   }
 
-  const user = profile ? {
+  const user = {
     id: profile.id,
     namaLengkap: profile.namaLengkap,
     email: profile.email,
     blok: profile.blok,
     role: profile.role,
     jabatan: profile.jabatan,
-  } : null
+  }
 
   return (
     <AppShell user={user}>

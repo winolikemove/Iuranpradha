@@ -6,11 +6,10 @@ import { Button } from '@/components/ui/button'
 import { AlertCircle, CheckCircle, Clock } from 'lucide-react'
 import Link from 'next/link'
 
-export default async function PendingApprovalPage({
-  searchParams,
-}: {
-  searchParams: { status?: string }
+export default async function PendingApprovalPage(props: {
+  searchParams: Promise<{ status?: string }>
 }) {
+  const searchParams = await props.searchParams
   const session = await getServerSession(authOptions)
   
   let profile = null
